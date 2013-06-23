@@ -12,10 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  * Contributors:
  *     Nuxeo - initial API and implementation
  *     bstefanescu, jcarsique
+ *     Anahide Tchertchian
  *
  * $Id$
  */
@@ -37,6 +38,8 @@ import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
+
 /**
  * Text template processing.
  * <p>
@@ -44,15 +47,19 @@ import java.util.regex.Pattern;
  * '${[a-zA-Z_0-9\-\.]+}' with values from a {@link Map} (deprecated) or a
  * {@link Properties}.
  * <p>
- * Method {@link #setParsingExtensions(String)} allow to set list of files being
- * processed when using {@link #processDirectory(File, File)} or #pro, others
- * are simply copied.
+ * Since 5.7.2, it an accept default values using syntax
+ * ${parameter:=defaultValue}. The default value will be used if parameter is
+ * null or unset.</li>
+ * <p>
+ * Method {@link #setParsingExtensions(String)} allow to set list of files
+ * being processed when using {@link #processDirectory(File, File)} or #pro,
+ * others are simply copied.
  *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
 public class TextTemplate {
 
-    private static final Pattern PATTERN = Pattern.compile("\\$\\{([a-zA-Z_0-9\\-\\.]+)\\}");
+    private static final Pattern PATTERN = Pattern.compile("\\$\\{([a-zA-Z_0-9\\-\\.]+)(:=(.*))?\\}");
 
     private final Properties vars;
 
@@ -85,15 +92,16 @@ public class TextTemplate {
     }
 
     /**
-     * @param vars Properties containing keys and values for template processing
+     * @param vars Properties containing keys and values for template
+     *            processing
      */
     public TextTemplate(Properties vars) {
         this.vars = vars;
     }
 
     /**
-     * @deprecated prefer use of {@link #getVariables()} then {@link Properties}
-     *             .load()
+     * @deprecated prefer use of {@link #getVariables()} then
+     *             {@link Properties} .load()
      */
     @Deprecated
     public void setVariables(Map<String, String> vars) {
@@ -118,7 +126,14 @@ public class TextTemplate {
         while (m.find()) {
             String var = m.group(1);
             String value = getVariable(var);
-            if (value != null) {
+            String paramExpansion = null;
+            if (m.groupCount() >= 3) {
+                paramExpansion = m.group(3);
+                if (StringUtils.isBlank(value)) {
+                    value = paramExpansion;
+                }
+            }
+            if (!StringUtils.isBlank(value)) {
                 if (trim) {
                     value = value.trim();
                 }
