@@ -38,8 +38,6 @@ import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
-
 /**
  * Text template processing.
  * <p>
@@ -126,14 +124,10 @@ public class TextTemplate {
         while (m.find()) {
             String var = m.group(1);
             String value = getVariable(var);
-            String paramExpansion = null;
-            if (m.groupCount() >= 3) {
-                paramExpansion = m.group(3);
-                if (StringUtils.isBlank(value)) {
-                    value = paramExpansion;
-                }
+            if (m.groupCount() >= 3 && value == null) {
+                value = m.group(3);
             }
-            if (!StringUtils.isBlank(value)) {
+            if (value != null) {
                 if (trim) {
                     value = value.trim();
                 }

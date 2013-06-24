@@ -64,6 +64,11 @@ public class TestTextTemplate {
         TextTemplate tt = new TextTemplate(vars);
         assertEquals("baz", emptytt.process("${foo:=baz}"));
         assertEquals("bar", tt.process("${foo:=baz}"));
+        assertEquals("<foo>${myUnresolvedExpression}</foo>",
+                tt.process("<foo>${myUnresolvedExpression}</foo>"));
+        vars.setProperty("myUnresolvedExpression", "");
+        assertEquals("<foo></foo>",
+                tt.process("<foo>${myUnresolvedExpression}</foo>"));
     }
 
 }
