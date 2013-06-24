@@ -119,6 +119,9 @@ public class TextTemplate {
     }
 
     public String process(CharSequence text) {
+        if (text == null) {
+            return null;
+        }
         Matcher m = PATTERN.matcher(text);
         StringBuffer sb = new StringBuffer();
         while (m.find()) {
