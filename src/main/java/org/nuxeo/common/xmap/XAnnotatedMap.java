@@ -30,7 +30,6 @@ import org.w3c.dom.Node;
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
-@SuppressWarnings( { "SuppressionAnnotation" })
 public class XAnnotatedMap extends XAnnotatedList {
 
     protected static final ElementMapVisitor elementMapVisitor = new ElementMapVisitor();
@@ -55,12 +54,17 @@ public class XAnnotatedMap extends XAnnotatedList {
         isNullByDefault = anno.nullByDefault();
     }
 
+    @Override
+    public Class<?> getType() {
+    	return componentType;
+    }
+    
     @SuppressWarnings("unchecked")
     @Override
     protected Object getValue(Context ctx, Element base) {
         Map<String, Object> values;
         try {
-            values = (Map) type.newInstance();
+            values = (Map<String,Object>) type.newInstance();
         } catch (InstantiationException e) {
             throw new IllegalArgumentException(e);
         } catch (IllegalAccessException e) {
@@ -88,13 +92,19 @@ public class XAnnotatedMap extends XAnnotatedList {
 
     @Override
     public void toXML(Object instance, Element parent) {
+    	if (accessor instanceof XDeferredAnnotatedMember) {
+    		// TODO
+    		throw new UnsupportedOperationException();
+    	}
         Object v = accessor.getValue(instance);
         if (v != null && v instanceof Map<?, ?>) {
-            Map<String, ?> map = (Map<String, ?>) v;
+            @SuppressWarnings("unchecked")
+			Map<String, ?> map = (Map<String, ?>) v;
             if (xao == null) {
                 for (Map.Entry<String, ?> entry : map.entrySet()) {
                     String entryKey = entry.getKey();
-                    String value = valueFactory.serialize(null,
+                    @SuppressWarnings("unchecked")
+					String value = valueFactory.serialize(null,
                             entry.getValue());
                     Element e = XMLBuilder.addElement(parent, path);
                     Element keyElement = XMLBuilder.getOrCreateElement(e, key);

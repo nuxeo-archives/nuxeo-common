@@ -54,7 +54,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
-
 /**
  * XMap maps an XML file to a java object.
  * <p>
@@ -62,30 +61,25 @@ import org.xml.sax.SAXException;
  * <p>
  * The following annotations are supported:
  * <ul>
- * <li> {@link XObject}
- * Mark the object as being mappable to an XML node
- * <li> {@link XNode}
- * Map an XML node to a field of a mappable object
- * <li> {@link XNodeList}
- * Map an list of XML nodes to a field of a mappable object
- * <li> {@link XNodeMap}
- * Map an map of XML nodes to a field of a mappable object
- * <li> {@link XContent}
- * Map an XML node content to a field of a mappable object
- * <li> {@link XParent}
- * Map a field of the current mappable object to the parent object if any exists
- * The parent object is the mappable object containing the current object as a field
+ * <li> {@link XObject} Mark the object as being mappable to an XML node
+ * <li> {@link XNode} Map an XML node to a field of a mappable object
+ * <li> {@link XNodeList} Map an list of XML nodes to a field of a mappable
+ * object
+ * <li> {@link XNodeMap} Map an map of XML nodes to a field of a mappable object
+ * <li> {@link XContent} Map an XML node content to a field of a mappable object
+ * <li> {@link XParent} Map a field of the current mappable object to the parent
+ * object if any exists The parent object is the mappable object containing the
+ * current object as a field
  * </ul>
  *
  * The mapping is done in 2 steps:
  * <ul>
- * <li> The XML file is loaded as a DOM document
- * <li> The DOM document is parsed and the nodes mapping is resolved
+ * <li>The XML file is loaded as a DOM document
+ * <li>The DOM document is parsed and the nodes mapping is resolved
  * </ul>
  *
- * @author  <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
+ * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
-@SuppressWarnings({"SuppressionAnnotation"})
 public class XMap {
 
     private static final DocumentBuilderFactory initFactory() {
@@ -113,8 +107,9 @@ public class XMap {
     // the scanned objects
     private final Map<Class<?>, XAnnotatedObject> objects;
 
-    private final Map<Class<?>, XValueFactory> factories;
+    private final Map<Class<?>, XValueFactory<?>> factories;
 
+    protected boolean deferClassLoading = false;
 
     /**
      * Creates a new XMap object.
@@ -122,7 +117,12 @@ public class XMap {
     public XMap() {
         objects = new Hashtable<Class<?>, XAnnotatedObject>();
         roots = new Hashtable<String, XAnnotatedObject>();
-        factories = new Hashtable<Class<?>, XValueFactory>(XValueFactory.defaultFactories);
+        factories = new Hashtable<Class<?>, XValueFactory<?>>(
+                XValueFactory.defaultFactories);
+    }
+
+    public void deferClassLoading() {
+        deferClassLoading = true;
     }
 
     /**
@@ -133,8 +133,9 @@ public class XMap {
      * @param type the object type
      * @return the value factory if any, null otherwise
      */
-    public XValueFactory getValueFactory(Class<?> type) {
-        return factories.get(type);
+    @SuppressWarnings("unchecked")
+    public <T> XValueFactory<T> getValueFactory(Class<T> type) {
+        return (XValueFactory<T>) factories.get(type);
     }
 
     /**
@@ -145,15 +146,19 @@ public class XMap {
      * @param type the object type
      * @param factory the value factory to use for the given type
      */
-    public void setValueFactory(Class<?> type, XValueFactory factory) {
+    public void setValueFactory(Class<?> type, XValueFactory<?> factory) {
         factories.put(type, factory);
+    }
+
+    public void setValueFactory(XValueFactory<?> factory) {
+        factories.put(factory.getType(), factory);
     }
 
     /**
      * Gets a list of scanned objects.
      * <p>
-     * Scanned objects are annotated objects that were registered
-     * by this XMap instance.
+     * Scanned objects are annotated objects that were registered by this XMap
+     * instance.
      */
     public Collection<XAnnotatedObject> getScannedObjects() {
         return objects.values();
@@ -162,8 +167,8 @@ public class XMap {
     /**
      * Gets the root objects.
      * <p>
-     * Root objects are scanned objects that can be mapped to XML elements
-     * that are not part from other objects.
+     * Root objects are scanned objects that can be mapped to XML elements that
+     * are not part from other objects.
      *
      * @return the root objects
      */
@@ -174,8 +179,8 @@ public class XMap {
     /**
      * Registers a mappable object class.
      * <p>
-     * The class will be scanned for XMap annotations
-     * and a mapping description is created.
+     * The class will be scanned for XMap annotations and a mapping description
+     * is created.
      *
      * @param klass the object class
      * @return the mapping description
@@ -204,7 +209,7 @@ public class XMap {
     private void scanClass(XAnnotatedObject xob, Class<?> aClass) {
         Field[] fields = aClass.getDeclaredFields();
         for (Field field : fields) {
-            Annotation anno =  checkMemberAnnotation(field);
+            Annotation anno = checkMemberAnnotation(field);
             if (anno != null) {
                 XAnnotatedMember member = createFieldMember(field, anno);
                 xob.addMember(member);
@@ -218,9 +223,10 @@ public class XMap {
             if (paramTypes.length != 1) {
                 continue;
             }
-            Annotation anno =  checkMemberAnnotation(method);
+            Annotation anno = checkMemberAnnotation(method);
             if (anno != null) {
-                XAnnotatedMember member = createMethodMember(method, anno, aClass);
+                XAnnotatedMember member = createMethodMember(method, anno,
+                        aClass);
                 xob.addMember(member);
             }
         }
@@ -236,7 +242,7 @@ public class XMap {
      *
      * @param url the XML file url
      * @return the first registered top level object that is found in the file,
-     *    or null if no objects are found.
+     *         or null if no objects are found.
      */
     public Object load(URL url) throws IOException {
         return load(new Context(), url.openStream());
@@ -254,7 +260,8 @@ public class XMap {
     }
 
     /**
-     * Processes the XML content from the given input stream using a default context.
+     * Processes the XML content from the given input stream using a default
+     * context.
      *
      * @param in the XML input source
      * @return the first registered top level object that is found in the file.
@@ -264,7 +271,8 @@ public class XMap {
     }
 
     /**
-     * Processes the XML content from the given input stream using the given context.
+     * Processes the XML content from the given input stream using the given
+     * context.
      *
      * @param ctx the context to use
      * @param in the input stream
@@ -294,12 +302,14 @@ public class XMap {
     /**
      * Processes the XML file at the given URL using a default context.
      * <p>
-     * Returns a list with all registered top level objects that are found in the file.
+     * Returns a list with all registered top level objects that are found in
+     * the file.
      * <p>
      * If not objects are found, an empty list is returned.
      *
      * @param url the XML file url
-     * @return a list with all registered top level objects that are found in the file
+     * @return a list with all registered top level objects that are found in
+     *         the file
      */
     public Object[] loadAll(URL url) throws IOException {
         return loadAll(new Context(), url.openStream());
@@ -308,13 +318,15 @@ public class XMap {
     /**
      * Processes the XML file at the given URL using the given context
      * <p>
-     * Return a list with all registered top level objects that are found in the file.
+     * Return a list with all registered top level objects that are found in the
+     * file.
      * <p>
      * If not objects are found an empty list is retoruned.
      *
      * @param ctx the context to use
      * @param url the XML file url
-     * @return a list with all registered top level objects that are found in the file
+     * @return a list with all registered top level objects that are found in
+     *         the file
      */
     public Object[] loadAll(Context ctx, URL url) throws IOException {
         return loadAll(ctx, url.openStream());
@@ -323,12 +335,14 @@ public class XMap {
     /**
      * Processes the XML from the given input stream using the given context.
      * <p>
-     * Returns a list with all registered top level objects that are found in the file.
+     * Returns a list with all registered top level objects that are found in
+     * the file.
      * <p>
      * If not objects are found, an empty list is returned.
      *
      * @param in the XML input stream
-     * @return a list with all registered top level objects that are found in the file
+     * @return a list with all registered top level objects that are found in
+     *         the file
      */
     public Object[] loadAll(InputStream in) throws IOException {
         return loadAll(new Context(), in);
@@ -337,13 +351,15 @@ public class XMap {
     /**
      * Processes the XML from the given input stream using the given context.
      * <p>
-     * Returns a list with all registered top level objects that are found in the file.
+     * Returns a list with all registered top level objects that are found in
+     * the file.
      * <p>
      * If not objects are found, an empty list is returned.
      *
      * @param ctx the context to use
      * @param in the XML input stream
-     * @return a list with all registered top level objects that are found in the file
+     * @return a list with all registered top level objects that are found in
+     *         the file
      */
     public Object[] loadAll(Context ctx, InputStream in) throws IOException {
         try {
@@ -400,7 +416,7 @@ public class XMap {
             while (p != null) {
                 if (p.getNodeType() == Node.ELEMENT_NODE) {
                     // Recurse in the first child Element
-                    return load((Element) p);
+                    return load(ctx, (Element) p);
                 }
                 p = p.getNextSibling();
             }
@@ -450,8 +466,8 @@ public class XMap {
     }
 
     /**
-     * Same as {@link XMap#loadAll(Context, Element)} but put collected objects in the
-     * given collection.
+     * Same as {@link XMap#loadAll(Context, Element)} but put collected objects
+     * in the given collection.
      *
      * @param ctx the context to use
      * @param root the element to process
@@ -475,11 +491,18 @@ public class XMap {
         }
     }
 
+    public void flushDeferred() {
+        for (XAnnotatedObject object : objects.values()) {
+            object.flushDeferred();
+        }
+        deferClassLoading = false;
+    }
+
     protected static Annotation checkMemberAnnotation(AnnotatedElement ae) {
         Annotation[] annos = ae.getAnnotations();
         for (Annotation anno : annos) {
-            if (anno.annotationType()
-                    .isAnnotationPresent(XMemberAnnotation.class)) {
+            if (anno.annotationType().isAnnotationPresent(
+                    XMemberAnnotation.class)) {
                 return anno;
             }
         }
@@ -490,9 +513,11 @@ public class XMap {
         return ae.getAnnotation(XObject.class);
     }
 
-    private XAnnotatedMember createMember(Annotation annotation, XAccessor setter) {
+    private XAnnotatedMember createMember(Annotation annotation,
+            XAccessor setter) {
         XAnnotatedMember member = null;
-        int type = annotation.annotationType().getAnnotation(XMemberAnnotation.class).value();
+        int type = annotation.annotationType().getAnnotation(
+                XMemberAnnotation.class).value();
         if (type == XMemberAnnotation.NODE) {
             member = new XAnnotatedMember(this, setter, (XNode) annotation);
         } else if (type == XMemberAnnotation.NODE_LIST) {
@@ -506,19 +531,23 @@ public class XMap {
         } else if (type == XMemberAnnotation.CONTEXT) {
             member = new XAnnotatedContext(this, setter, (XContext) annotation);
         }
+        if (deferClassLoading && Class.class.isAssignableFrom(member.getType())) {
+            member = new XDeferredAnnotatedMember(member);
+        }
         return member;
     }
 
-    public final XAnnotatedMember createFieldMember(Field field, Annotation annotation) {
+    public final XAnnotatedMember createFieldMember(Field field,
+            Annotation annotation) {
         XAccessor setter = new XFieldAccessor(field);
         return createMember(annotation, setter);
     }
 
-    public final XAnnotatedMember createMethodMember(Method method, Annotation annotation, Class<?> klass) {
+    public final XAnnotatedMember createMethodMember(Method method,
+            Annotation annotation, Class<?> klass) {
         XAccessor setter = new XMethodAccessor(method, klass);
         return createMember(annotation, setter);
     }
-
 
     // methods to serialize the map
     public String toXML(Object object) throws IOException {
@@ -539,7 +568,7 @@ public class XMap {
         return DOMSerializer.toString(root);
     }
 
-    public void toXML(Object object, OutputStream os ) throws IOException {
+    public void toXML(Object object, OutputStream os) throws IOException {
         String xml = toXML(object);
         os.write(xml.getBytes());
     }
@@ -549,10 +578,12 @@ public class XMap {
         FileUtils.writeFile(file, xml);
     }
 
-    public void toXML(Object object, Element root){
+    public void toXML(Object object, Element root) {
         XAnnotatedObject xao = objects.get(object.getClass());
-        if ( xao == null ){
-            throw new IllegalArgumentException(object.getClass().getCanonicalName() + " is NOT registred in xmap");
+        if (xao == null) {
+            throw new IllegalArgumentException(
+                    object.getClass().getCanonicalName()
+                            + " is NOT registred in xmap");
         }
         XMLBuilder.saveToXML(object, root, xao);
     }

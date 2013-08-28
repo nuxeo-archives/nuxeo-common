@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<contrib component="org.nuxeo.common.xmap.TestDeferClasses">
+  <service>org.nuxeo.common.xmap.TestDeferClasses</service>
+  <extension extend="org.nuxeo.common.xmap.TestDeferClasses"/>
+</contrib>

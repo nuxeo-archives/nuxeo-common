@@ -27,61 +27,58 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
- * @author  <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
- *
+ * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
+ * 
  */
 public class Context extends ArrayList<Object> {
 
-    private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 1L;
 
-    private final HashMap<String, Object> properties = new HashMap<String, Object>();
+	private final HashMap<String, Object> properties = new HashMap<String, Object>();
 
+	public Class<?> loadClass(String className) throws ClassNotFoundException {
+		return Class.forName(className, true, Thread.currentThread()
+				.getContextClassLoader());
+	}
 
-    public Class<?> loadClass(String className) throws ClassNotFoundException {
-        if (className.startsWith("[")) {
-            return Class.forName(className, true, Thread.currentThread().getContextClassLoader());
-        }
-        return Thread.currentThread().getContextClassLoader().loadClass(className);
-    }
+	public URL getResource(String name) {
+		return Thread.currentThread().getContextClassLoader().getResource(name);
+	}
 
-    public URL getResource(String name) {
-        return Thread.currentThread().getContextClassLoader().getResource(name);
-    }
+	public Object getObject() {
+		int size = size();
+		if (size > 0) {
+			return get(size - 1);
+		}
+		return null;
+	}
 
-    public Object getObject() {
-        int size = size();
-        if (size > 0) {
-            return get(size - 1);
-        }
-        return null;
-    }
+	public Object getParent() {
+		int size = size();
+		if (size > 1) {
+			return get(size - 2);
+		}
+		return null;
+	}
 
-    public Object getParent() {
-        int size = size();
-        if (size > 1) {
-            return get(size - 2);
-        }
-        return null;
-    }
+	public void push(Object object) {
+		add(object);
+	}
 
-    public void push(Object object) {
-        add(object);
-    }
+	public Object pop() {
+		int size = size();
+		if (size > 0) {
+			return remove(size - 1);
+		}
+		return null;
+	}
 
-    public Object pop() {
-        int size = size();
-        if (size > 0) {
-            return remove(size - 1);
-        }
-        return null;
-    }
+	public Object getProperty(String key) {
+		return properties.get(key);
+	}
 
-    public Object getProperty(String key) {
-        return properties.get(key);
-    }
-
-    public void setProperty(String key, Object value) {
-        properties.put(key, value);
-    }
+	public void setProperty(String key, Object value) {
+		properties.put(key, value);
+	}
 
 }

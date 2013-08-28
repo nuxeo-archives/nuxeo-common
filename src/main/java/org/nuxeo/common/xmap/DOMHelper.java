@@ -245,7 +245,8 @@ public final class DOMHelper {
             Node node = doc.importNode(d.getDocumentElement(), true);
 
             // Create the document fragment node to hold the new nodes
-            DocumentFragment docfrag = doc.createDocumentFragment();
+            @SuppressWarnings("unused")
+			DocumentFragment docfrag = doc.createDocumentFragment();
 
             // Move the nodes into the fragment
             while (node.hasChildNodes()) {

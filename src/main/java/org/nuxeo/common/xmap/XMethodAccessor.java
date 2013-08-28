@@ -21,30 +21,52 @@
 
 package org.nuxeo.common.xmap;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import org.apache.commons.lang.WordUtils;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
 public class XMethodAccessor implements XAccessor {
 
-    private final Method setter;
-    private final Class klass;
-    Method getter;
+    protected final Method setter;
 
-    public XMethodAccessor(Method method, Class klass) {
+    protected final Field field;
+
+    protected final Method getter;
+
+    protected final Class<?> klass;
+
+    public XMethodAccessor(Method method, Class<?> klass) {
         setter = method;
         setter.setAccessible(true);
         //
         this.klass = klass;
+        field = guessMemberField();
+        getter = guessGetter();
     }
 
-    public Class getType() {
+    @Override
+    public Class<?> getType() {
         return setter.getParameterTypes()[0];
     }
 
+    @Override
+    public Class<?> getMemberType() {
+        if (field != null) {
+            return field.getType();
+        }
+        if (getter != null) {
+            return getter.getReturnType();
+        }
+        return Object.class;
+    }
+
+    @Override
     public void setValue(Object instance, Object value) {
         try {
             setter.invoke(instance, value);
@@ -60,55 +82,67 @@ public class XMethodAccessor implements XAccessor {
 
     @Override
     public String toString() {
-        return "XMethodSetter {method: " + setter + '}';
+        return setter.toString();
     }
 
+    @Override
     public Object getValue(Object instance) {
-        // lazy initialization for getter to keep the compatibility
-        // with current xmap definition
         if (getter == null) {
-            getter = findGetter(klass);
+            return null;
         }
-        if (getter != null) {
-            try {
-                return getter.invoke(instance);
-            } catch (IllegalAccessException e) {
-                throw new IllegalArgumentException(e);
-            } catch (InvocationTargetException e) {
-                if (e.getCause() instanceof RuntimeException) {
-                    throw (RuntimeException) e.getCause();
-                }
-                throw new IllegalArgumentException(e);
+        try {
+            return getter.invoke(instance);
+        } catch (IllegalAccessException e) {
+            throw new IllegalArgumentException(e);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof RuntimeException) {
+                throw (RuntimeException) e.getCause();
             }
+            throw new IllegalArgumentException(e);
         }
-        return null;
     }
 
-    private Method findGetter(Class klass) {
-        String setterName = setter.getName();
-        if (setterName.toLowerCase().startsWith("set")) {
-            String suffix = setterName.substring(3);
-            String prefix = null;
-
-            Class<?>[] classes = setter.getParameterTypes();
-            Class<?> clazz = classes[0];
-            // compute the getter name
-            if (clazz == Boolean.class || clazz == Boolean.TYPE) {
-                prefix = "is";
-            } else {
-                prefix = "get";
-            }
-            String getterName = prefix + suffix;
-            try {
-                return klass.getMethod(getterName, new Class[0]);
-            } catch (SecurityException e) {
-                throw new IllegalArgumentException(e);
-            } catch (NoSuchMethodException e) {
-                throw new IllegalArgumentException(
-                        "there is NO getter defined for annotated setter: " + setterName, e);
-            }
+    protected Field guessMemberField() {
+        String fieldName = fieldName();
+        if (fieldName == null) {
+            return null;
         }
-        return null;
+        try {
+            return klass.getDeclaredField(fieldName);
+        } catch (NoSuchFieldException | SecurityException e) {
+            return null;
+        }
+    }
+
+    private String fieldName() {
+        String setterName = setter.getName().toLowerCase();
+        int index = setterName.indexOf("set");
+        if (index == -1) {
+            return null;
+        }
+        return WordUtils.uncapitalize(setter.getName().substring(index + 3));
+    }
+
+    protected Method guessGetter() {
+        String fieldName = field != null ? field.getName() : fieldName();
+        Class<?>[] classes = setter.getParameterTypes();
+        Class<?> clazz = classes[0];
+        String prefix;
+        // compute the getter name
+        if (clazz == Boolean.class || clazz == Boolean.TYPE) {
+            prefix = "is";
+        } else {
+            prefix = "get";
+        }
+        String getterName = prefix + WordUtils.capitalize(fieldName);
+        try {
+            return klass.getMethod(getterName, new Class[0]);
+        } catch (NoSuchMethodException | SecurityException e) {
+            LogFactory.getLog(XMethodAccessor.class).warn(
+                    "Cannot guess getter of field " + fieldName + " in class "
+                            + clazz.getName());
+            return null;
+        }
     }
 
 }

@@ -113,7 +113,7 @@ public class Author {
     }
 
     @XNode("item2")
-    void setField2(String val) {
+    void setItem2(String val) {
         if (!item1) {
             Assert.fail("Field item1 was not set before me");
         }
@@ -124,7 +124,7 @@ public class Author {
     }
 
     @XNode("item1")
-    void setField1(String val) {
+    void setItem1(String val) {
         if (item2) {
             Assert.fail("Field item2 was set before item1");
         }
@@ -135,7 +135,7 @@ public class Author {
     }
 
     @XNode("item3")
-    void setField3(String val) {
+    void setItem3(String val) {
         if (!item1) {
             Assert.fail("Field item1 was not set before item3");
         }
@@ -169,15 +169,15 @@ public class Author {
         return age;
     }
 
-    public String getField1() {
+    public String getItem1() {
         return "" + item1;
     }
 
-    public String getField2() {
+    public String getItem2() {
         return "" + item2;
     }
 
-    public String getField3() {
+    public String getItem3() {
         return "" + item3;
     }
 

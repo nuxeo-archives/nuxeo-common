@@ -22,6 +22,7 @@
 package org.nuxeo.common.xmap;
 
 import java.io.File;
+import java.lang.reflect.ParameterizedType;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DateFormat;
@@ -42,121 +43,155 @@ import org.w3c.dom.Node;
  *
  * @author <a href="mailto:bs@nuxeo.com">Bogdan Stefanescu</a>
  */
-public abstract class XValueFactory {
+public abstract class XValueFactory<T> {
 
     private static final Log log = LogFactory.getLog(XValueFactory.class);
 
-    static final Map<Class<?>, XValueFactory> defaultFactories = new Hashtable<Class<?>, XValueFactory>();
+    static final Map<Class<?>, XValueFactory<?>> defaultFactories = new Hashtable<Class<?>, XValueFactory<?>>();
 
-    public abstract Object deserialize(Context context, String value);
+	@SuppressWarnings("unchecked")
+	public Class<T> getType() {
+		ParameterizedType type = (ParameterizedType)getClass().getGenericSuperclass();
+		return (Class<T>)type.getActualTypeArguments()[0];
+	}
 
-    public abstract String serialize(Context context, Object value);
+    public abstract  T deserialize(Context context, String value);
 
-    public final Object getElementValue(Context context, Node element,
+    public abstract String serialize(Context context, T value);
+
+    public final T getElementValue(Context context, Node element,
             boolean trim) {
         String text = element.getTextContent();
         return deserialize(context, trim ? text.trim() : text);
     }
 
-    public final Object getAttributeValue(Context context, Node element,
+    public final T getAttributeValue(Context context, Node element,
             String name) {
         Node at = element.getAttributes().getNamedItem(name);
         return at != null ? deserialize(context, at.getNodeValue()) : null;
     }
 
-    public static void addFactory(Class klass, XValueFactory factory) {
+    public static <T> void addFactory(Class<T> klass, XValueFactory<T> factory) {
         defaultFactories.put(klass, factory);
     }
 
-    public static XValueFactory getFactory(Class type) {
-        return defaultFactories.get(type);
+    @SuppressWarnings("unchecked")
+	public static <T> XValueFactory<T> getFactory(Class<T> type) {
+        return (XValueFactory<T>)defaultFactories.get(type);
     }
 
-    public static Object getValue(Context context, Class klass, String value) {
-        XValueFactory factory = defaultFactories.get(klass);
+    public static <T> T getValue(Context context, Class<T> klass, String value) {
+        XValueFactory<T> factory = getFactory(klass);
         if (factory == null) {
             return null;
         }
         return factory.deserialize(context, value);
     }
 
-    public static final XValueFactory STRING = new XValueFactory() {
+    public static final XValueFactory<String> STRING = new XValueFactory<String>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public String deserialize(Context context, String value) {
             return value;
         }
 
         @Override
-        public String serialize(Context context, Object value) {
+        public String serialize(Context context, String value) {
             return value.toString();
         }
+
     };
 
-    public static final XValueFactory INTEGER = new XValueFactory() {
+    public static final XValueFactory<Integer> INTEGER = new XValueFactory<Integer>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public Integer deserialize(Context context, String value) {
             return Integer.valueOf(value);
         }
 
         @Override
-        public String serialize(Context context, Object value) {
-            return value.toString();
+        public String serialize(Context context, Integer value) {
+            return Integer.toString(value);
         }
+
+		@Override
+		public Class<Integer> getType() {
+			return Integer.class;
+		}
+
     };
 
-    public static final XValueFactory LONG = new XValueFactory() {
+    public static final XValueFactory<Long> LONG = new XValueFactory<Long>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public Long deserialize(Context context, String value) {
             return Long.valueOf(value);
         }
 
         @Override
-        public String serialize(Context context, Object value) {
-            return value.toString();
+        public String serialize(Context context, Long value) {
+            return Long.toString(value);
         }
+
+		@Override
+		public Class<Long> getType() {
+			return Long.class;
+		}
     };
 
-    public static final XValueFactory DOUBLE = new XValueFactory() {
+    public static final XValueFactory<Double> DOUBLE = new XValueFactory<Double>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public Double deserialize(Context context, String value) {
             return Double.valueOf(value);
         }
 
         @Override
-        public String serialize(Context context, Object value) {
-            return value.toString();
+        public String serialize(Context context, Double value) {
+            return Double.toString(value);
         }
+
+		@Override
+		public Class<Double> getType() {
+			return Double.class;
+		}
     };
 
-    public static final XValueFactory FLOAT = new XValueFactory() {
+    public static final XValueFactory<Float> FLOAT = new XValueFactory<Float>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public Float deserialize(Context context, String value) {
             return Float.valueOf(value);
         }
 
         @Override
-        public String serialize(Context context, Object value) {
-            return value.toString();
+        public String serialize(Context context, Float value) {
+            return Float.toString(value);
         }
+
+		@Override
+		public Class<Float> getType() {
+			return Float.class;
+		}
     };
 
-    public static final XValueFactory BOOLEAN = new XValueFactory() {
+    public static final XValueFactory<Boolean> BOOLEAN = new XValueFactory<Boolean>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public Boolean deserialize(Context context, String value) {
             return Boolean.valueOf(value);
         }
 
         @Override
-        public String serialize(Context context, Object value) {
-            return value.toString();
+        public String serialize(Context context, Boolean value) {
+            return Boolean.toString(value);
         }
+
+		@Override
+		public Class<Boolean> getType() {
+			return Boolean.class;
+		}
     };
 
-    public static final XValueFactory DATE = new XValueFactory() {
+    public static final XValueFactory<Date> DATE = new XValueFactory<Date>() {
         private final DateFormat df = DateFormat.getDateInstance();
 
         @Override
-        public Object deserialize(Context context, String value) {
+        public Date deserialize(Context context, String value) {
             try {
                 return df.parse(value);
             } catch (ParseException e) {
@@ -165,28 +200,38 @@ public abstract class XValueFactory {
         }
 
         @Override
-        public String serialize(Context context, Object value) {
-            Date date = (Date) value;
+        public String serialize(Context context, Date value) {
+            Date date = value;
             return df.format(date);
         }
+
+		@Override
+		public Class<Date> getType() {
+			return Date.class;
+		}
     };
 
-    public static final XValueFactory FILE = new XValueFactory() {
+    public static final XValueFactory<File> FILE = new XValueFactory<File>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public File deserialize(Context context, String value) {
             return new File(value);
         }
 
         @Override
-        public String serialize(Context context, Object value) {
-            File file = (File) value;
+        public String serialize(Context context, File value) {
+            File file = value;
             return file.getName();
         }
+
+		@Override
+		public Class<File> getType() {
+			return File.class;
+		}
     };
 
-    public static final XValueFactory URL = new XValueFactory() {
+    public static final XValueFactory<URL> URL = new XValueFactory<URL>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public URL deserialize(Context context, String value) {
             try {
                 return new URL(value);
             } catch (MalformedURLException e) {
@@ -195,39 +240,54 @@ public abstract class XValueFactory {
         }
 
         @Override
-        public String serialize(Context context, Object value) {
-            return value.toString();
+        public String serialize(Context context, URL value) {
+            return value.toExternalForm();
         }
+
+		@Override
+		public Class<java.net.URL> getType() {
+			return URL.class;
+		}
     };
 
-    public static final XValueFactory CLASS = new XValueFactory() {
+    @SuppressWarnings("rawtypes")
+	public static final XValueFactory<Class> CLASS = new XValueFactory<Class>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public Class deserialize(Context context, String value) {
             try {
                 return context.loadClass(value);
             } catch (ClassNotFoundException e) {
-                log.error("Cannot load class: " + value, e);
-                return null;
+                throw new RuntimeException("Cannot load class " + value, e);
             }
         }
 
         @Override
-        public String serialize(Context context, Object value) {
-            Class<?> clazz = (Class<?>) value;
+        public String serialize(Context context, Class value) {
+            Class<?> clazz = value;
             return clazz.getName();
+        }
+
+        @Override
+        public Class<Class> getType() {
+            return Class.class;
         }
     };
 
-    public static final XValueFactory RESOURCE = new XValueFactory() {
+    public static final XValueFactory<Resource> RESOURCE = new XValueFactory<Resource>() {
         @Override
-        public Object deserialize(Context context, String value) {
+        public Resource deserialize(Context context, String value) {
             return new Resource(context.getResource(value));
         }
 
         @Override
-        public String serialize(Context context, Object value) {
+        public String serialize(Context context, Resource value) {
             return value.toString();
         }
+
+		@Override
+		public Class<Resource> getType() {
+			return Resource.class;
+		}
     };
 
     static {
@@ -249,5 +309,6 @@ public abstract class XValueFactory {
         addFactory(Class.class, CLASS);
         addFactory(Resource.class, RESOURCE);
     }
+
 
 }

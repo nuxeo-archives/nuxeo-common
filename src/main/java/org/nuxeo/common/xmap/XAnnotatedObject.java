@@ -105,6 +105,14 @@ public class XAnnotatedObject {
 
         return ctx.pop();
     }
+    
+    public void flushDeferred() {
+    	for (XAnnotatedMember member:members) {
+    		if (member instanceof XDeferredAnnotatedMember) {
+    			((XDeferredAnnotatedMember)member).flush();
+    		}
+    	}
+    }
 }
 
 class Sorter implements Comparator<XAnnotatedMember>, Serializable {
